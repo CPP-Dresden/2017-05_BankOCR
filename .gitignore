@@ -1,2 +1,4 @@
 BankOCR/.vs/
 *.user
+.vs/
+bin/
