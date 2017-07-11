@@ -37,6 +37,7 @@ namespace BankOCR
 	CheckResults checkWithFixes(AccountNumbers);
 
 	String toString(AccountNumber);
+	String toString(CheckResult);
 	String toString(CheckResults);
 
 	int to_int(AccountNumber);

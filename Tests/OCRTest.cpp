@@ -96,5 +96,6 @@ TEST(OCRTest, checkResultsString) {
 123456789 ILL
 123456789 FIX
 123456789 AMB
-123456789 ERR)", ret);
+123456789 ERR
+)", ret);
 }

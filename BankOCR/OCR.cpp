@@ -3,9 +3,8 @@
 
 namespace BankOCR {
 	using ScannedDigit = std::array<char, 9>;
-	using ScannedDigitList = ScannedDigit[10];
 	namespace {
-		const ScannedDigitList scannedDigitList = {
+		const auto scannedDigitList = meta::mk_array(
 			meta::str_array(
 				" _ "
 				"| |"
@@ -46,31 +45,31 @@ namespace BankOCR {
 				" _ "
 				"|_|"
 				" _|")
-		};
+		);
 
-		AccountDigit parseDigit(const ScannedDigit& scanned) {
-			auto optional_index = meta::find_value_index(scannedDigitList, scanned);
+		AccountDigit toAccountDigit(ScannedDigit scannedDigit) {
+			auto optional_index = meta::find_value_index(scannedDigitList, scannedDigit);
 			if (!optional_index) return AccountDigit::Invalid; 
 			return static_cast<AccountDigit>(*optional_index);			
 		}
-	}
 
-	using ScannedDigitLine = std::array<ScannedDigit, AccountNumber().size()>;
-	namespace {
-		auto chopScannedEntry(const ScannedEntry& entry) {
-			ScannedDigitLine result;
-			for (auto digit = 0u; digit < AccountNumber().size(); ++digit) {
-				for (auto line = 0u; line < 3; ++line)
-					meta::part<3>(result[digit], line) = meta::part<3>(entry[line], digit);
-			}
-			return result;
+		auto toScannedDigit(ScannedEntry entry, size_t digit) {
+			return meta::flatten(meta::generate_to_array<3>([&](auto line) {
+				return meta::part<3>(entry[line], digit);
+			}));
+		}
+		auto toScannedDigitLine(ScannedEntry entry) {
+			return meta::generate_to_array<AccountNumber().size()>([&](auto digit) {
+				return toScannedDigit(entry, digit);
+			});
+		}
+		auto toAccountNumber(ScannedEntry entry) {
+			return meta::transform_to_array(toScannedDigitLine(entry), &toAccountDigit);
 		}
 	}
 
 	AccountNumbers parse(ScannedFile input) {
-		return meta::transform_to_vector(input, [](const auto& entry)->AccountNumber {
-			return meta::transform_to_array(chopScannedEntry(entry), &parseDigit);
-		});
+		return meta::transform_to_vector(input, &toAccountNumber);
 	}
 
 	namespace {
@@ -86,30 +85,28 @@ namespace BankOCR {
 	}
 
 	CheckResults check(AccountNumbers accountNumbers) {
-		return meta::transform_to_vector(accountNumbers, [](const auto& accountNumber) {
+		return meta::transform_to_vector(accountNumbers, [](auto accountNumber) {
 			CheckResult result;
 			result.number = accountNumber;
-			if (!isValid(accountNumber)) {
-				result.state = CheckState::IllelibleCharacters;
-			}
-			else if (0 != calcChecksum(accountNumber)) {
-				result.state = CheckState::WrongChecksum;
-			}
+			result.state = [&] {
+				if (!isValid(accountNumber)) return CheckState::IllelibleCharacters;
+				if (0 != calcChecksum(accountNumber)) return CheckState::WrongChecksum;
+				return CheckState::Passed;
+			}();
 			return result;
 		});
 	}
 
 	using Alternatives = std::vector<AccountDigit>;
-	using AlternativeMap = std::array<Alternatives, 10>;
 	namespace {
-		const AlternativeMap alternativeMap = meta::mk_array(
+		const auto alternativeMap = meta::mk_array(
 			Alternatives{ AccountDigit::Eight }, // 0
 			Alternatives{ AccountDigit::Seven }, // 1
-			Alternatives{},  // 2
+			Alternatives{}, // 2
 			Alternatives{ AccountDigit::Nine }, // 3
 			Alternatives{}, // 4
 			Alternatives{ AccountDigit::Six, AccountDigit::Nine }, // 5
-			Alternatives{},  // 6
+			Alternatives{}, // 6
 			Alternatives{ AccountDigit::One }, // 7
 			Alternatives{ AccountDigit::Zero, AccountDigit::Six, AccountDigit::Nine }, // 8
 			Alternatives{ AccountDigit::Three, AccountDigit::Five, AccountDigit::Eight } // 9
@@ -130,23 +127,22 @@ namespace BankOCR {
 	}
 
 	CheckResults checkWithFixes(AccountNumbers accountNumbers) {
-		return meta::transform_to_vector(accountNumbers, [](const auto& accountNumber) {
+		return meta::transform_to_vector(accountNumbers, [](auto accountNumber) {
 			CheckResult result;
 			result.number = accountNumber;
-			if (!isValid(accountNumber)) {
-				result.state = CheckState::IllelibleCharacters;
-			}
-			else if (0 != calcChecksum(accountNumber)) {
-				result.state = CheckState::WrongChecksum;
-
-				auto fixes = gatherFixes(accountNumber);
-				if (fixes.empty()) result.fix = FixState::Failed;
-				else if (1 != fixes.size()) result.fix = FixState::Ambiguous;
-				else {
-					result.fix = FixState::Success;
-					result.number = fixes.front();
+			result.state = [&] {
+				if (!isValid(accountNumber)) return CheckState::IllelibleCharacters;
+				if (0 != calcChecksum(accountNumber)) {
+					result.fix = [&, fixes = gatherFixes(accountNumber)] {
+						if (fixes.empty()) return FixState::Failed;
+						if (1 != fixes.size()) return FixState::Ambiguous;
+						result.number = fixes.front();
+						return FixState::Success;
+					}();
+					return CheckState::WrongChecksum;
 				}
-			}
+				return CheckState::Passed;
+			}();
 			return result;
 		});
 	}
@@ -156,38 +152,32 @@ namespace BankOCR {
 	}
 
 	String toString(AccountNumber accountNumber) {
-		return meta::transform_to_string(accountNumber, [](const auto& accountDigit) {
+		return meta::transform_to_string(accountNumber, [](auto accountDigit) {
 			return accountDigitToChar[static_cast<size_t>(accountDigit)];
 		});
 	}
 
-	String toString(CheckResults checkResults) {
-		auto lines = meta::transform_to_vector(checkResults, [](const auto& checkResult) {
-			auto numberStr = toString(checkResult.number);
+	String toString(CheckResult checkResult) {
+		auto extraStr = [&] {
 			switch (checkResult.state) {
-			case CheckState::Passed:
-				return numberStr;
-
-			case CheckState::IllelibleCharacters:
-				return numberStr + " ILL";
-
+			case CheckState::Passed: return "";
+			case CheckState::IllelibleCharacters: return " ILL";
+			default:
 			case CheckState::WrongChecksum:
 				switch (checkResult.fix) {
-				case FixState::Success:
-					return numberStr + " FIX";
-				case FixState::Ambiguous:
-					return numberStr + " AMB";
+				case FixState::Success: return " FIX";
+				case FixState::Ambiguous: return " AMB";
 				default:
-				case FixState::Failed:
-					return numberStr + " ERR";
+				case FixState::Failed: return " ERR";
 				}
-			default:
-				return String{};
 			}
-		});
-		return meta::accumulate(lines, String{}, [](auto accu, auto line) {
-			if (accu.empty()) return line;
-			return accu + "\n" + line;
+		}();
+		return toString(checkResult.number) + extraStr;
+	}
+
+	String toString(CheckResults checkResults) {
+		return meta::accumulate(checkResults, String{}, [](auto accu, auto checkResult) {
+			return accu + toString(checkResult) + "\n";
 		});
 	}
 

@@ -38,6 +38,16 @@ namespace meta {
 		return result;
 	}
 
+	template<size_t Size, class Callback>
+	auto generate_to_array(Callback&& callback) {
+		using Output = std::result_of_t<Callback(size_t)>;
+		std::array<std::remove_const_t<Output>, Size> result;
+		std::generate(result.begin(), result.end(), [index = 0u, cb = (Callback&&)callback]() mutable {
+			return cb(index++);
+		});
+		return result;
+	}
+
 	template<class Container, class Target, class Callback>
 	auto accumulate(const Container& input, const Target& accu, Callback&& callback) {
 		using std::begin;
@@ -83,5 +93,10 @@ namespace meta {
 	constexpr auto mk_array(E e, A... a) {
 		std::array<std::remove_const_t<E>, 1 + sizeof...(A)> result = { { e, a... } };
 		return result;
+	}
+
+	template<class E, size_t count_outer, size_t count_inner>
+	constexpr auto& flatten(const std::array<std::array<E, count_inner>, count_outer>& a) {
+		return reinterpret_cast<const std::array<E, count_inner*count_outer>&>(a);
 	}
 }
