@@ -19,6 +19,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="meta.h" />
     <ClInclude Include="OCR.h" />
   </ItemGroup>
   <ItemGroup>

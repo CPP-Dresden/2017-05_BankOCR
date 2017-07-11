@@ -1,21 +1,11 @@
 #include "OCR.h"
+#include "meta.h"
 
 #include <gtest/gtest.h>
 
-template<class E, class... A>
-constexpr auto mk_array(E e, A... a) {
-	std::array<std::remove_const_t<E>, 1 + sizeof...(A)> result = { {e, a...} };
-	return result;
-}
-
-template<class E, size_t S>
-constexpr auto str_array(E(&v)[S]) {
-	std::array<std::remove_const_t<E>, S-1> result;
-	for (auto i = 0u; i < S-1; ++i) result[i] = v[i];
-	return result;
-}
-
 TEST(OCRTest, parseOneToNine) {
+	using meta::str_array;
+	using meta::mk_array;
 	auto input = BankOCR::ScannedFile{
 		{
 			str_array("    _  _     _  _  _  _  _ "),
@@ -31,6 +21,8 @@ TEST(OCRTest, parseOneToNine) {
 }
 
 TEST(OCRTest, parseInvalidAndZero) {
+	using meta::str_array;
+	using meta::mk_array;
 	auto input = BankOCR::ScannedFile{
 		{
 			str_array("    _  _     _  _  _  _  _ "),
@@ -46,6 +38,7 @@ TEST(OCRTest, parseInvalidAndZero) {
 }
 
 TEST(OCRTest, checkValid) {
+	using meta::mk_array;
 	using AD = BankOCR::AccountDigit;
 	auto inputs = BankOCR::AccountNumbers{ mk_array(AD::Three, AD::Four, AD::Five, AD::Eight, AD::Eight, AD::Two, AD::Eight, AD::Six, AD::Five) };
 	auto ret = BankOCR::check(inputs);
@@ -53,6 +46,7 @@ TEST(OCRTest, checkValid) {
 }
 
 TEST(OCRTest, checkWrongChecksum) {
+	using meta::mk_array;
 	using AD = BankOCR::AccountDigit;
 	auto inputs = BankOCR::AccountNumbers{ mk_array(AD::Six, AD::Six, AD::Four, AD::Three, AD::Seven, AD::One, AD::Four, AD::Nine, AD::Five) };
 	auto ret = BankOCR::check(inputs);
@@ -60,6 +54,7 @@ TEST(OCRTest, checkWrongChecksum) {
 }
 
 TEST(OCRTest, checkIllelibleCharacters) {
+	using meta::mk_array;
 	using AD = BankOCR::AccountDigit;
 	auto inputs = BankOCR::AccountNumbers{ mk_array(AD::Six, AD::Six, AD::Four, AD::Three, AD::Seven, AD::One, AD::Four, AD::Invalid, AD::Five) };
 	auto ret = BankOCR::check(inputs);
@@ -67,6 +62,7 @@ TEST(OCRTest, checkIllelibleCharacters) {
 }
 
 TEST(OCRTest, checkFixAmbigious) {
+	using meta::mk_array;
 	using AD = BankOCR::AccountDigit;
 	auto inputs = BankOCR::AccountNumbers{ mk_array(AD::Four, AD::Nine, AD::Zero, AD::Zero, AD::Six, AD::Seven, AD::Seven, AD::One, AD::Five) };
 	auto ret = BankOCR::checkWithFixes(inputs);
@@ -75,6 +71,7 @@ TEST(OCRTest, checkFixAmbigious) {
 }
 
 TEST(OCRTest, checkFixSuccess) {
+	using meta::mk_array;
 	using AD = BankOCR::AccountDigit;
 	auto inputs = BankOCR::AccountNumbers{ mk_array(AD::Six, AD::Six, AD::Four, AD::Three, AD::Seven, AD::One, AD::Four, AD::Nine, AD::Five) };
 	auto ret = BankOCR::checkWithFixes(inputs);
@@ -83,6 +80,7 @@ TEST(OCRTest, checkFixSuccess) {
 }
 
 TEST(OCRTest, checkResultsString) {
+	using meta::mk_array;
 	using AD = BankOCR::AccountDigit;
 	using CheckState = BankOCR::CheckState;
 	using FixState = BankOCR::FixState;
