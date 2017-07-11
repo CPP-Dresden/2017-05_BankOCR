@@ -18,15 +18,10 @@ namespace BankOCR
 	using AccountNumbers = std::vector<AccountNumber>;
 
 	enum class CheckState {
-		Passed,
-		WrongChecksum,
-		IllelibleCharacters,
+		Passed, WrongChecksum, IllelibleCharacters,
 	};
 	enum class FixState {
-		None,
-		Success,
-		Ambiguous,
-		Failed,
+		None, Success, Ambiguous, Failed,
 	};
 	struct CheckResult {
 		CheckState state = CheckState::Passed;

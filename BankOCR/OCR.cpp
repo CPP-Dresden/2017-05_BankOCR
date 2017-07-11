@@ -50,8 +50,8 @@ namespace BankOCR {
 
 		AccountDigit parseDigit(const ScannedDigit& scanned) {
 			auto optional_index = meta::find_value_index(scannedDigitList, scanned);
-			if (optional_index) return static_cast<AccountDigit>(*optional_index);
-			return AccountDigit::Invalid;
+			if (!optional_index) return AccountDigit::Invalid; 
+			return static_cast<AccountDigit>(*optional_index);			
 		}
 	}
 
@@ -67,8 +67,7 @@ namespace BankOCR {
 		}
 	}
 
-	AccountNumbers parse(ScannedFile input)
-	{
+	AccountNumbers parse(ScannedFile input) {
 		return meta::transform_to_vector(input, [](const auto& entry)->AccountNumber {
 			return meta::transform_to_array(chopScannedEntry(entry), &parseDigit);
 		});
@@ -86,8 +85,7 @@ namespace BankOCR {
 		}
 	}
 
-	CheckResults check(AccountNumbers accountNumbers)
-	{
+	CheckResults check(AccountNumbers accountNumbers) {
 		return meta::transform_to_vector(accountNumbers, [](const auto& accountNumber) {
 			CheckResult result;
 			result.number = accountNumber;
@@ -131,8 +129,7 @@ namespace BankOCR {
 		}
 	}
 
-	CheckResults checkWithFixes(AccountNumbers accountNumbers)
-	{
+	CheckResults checkWithFixes(AccountNumbers accountNumbers) {
 		return meta::transform_to_vector(accountNumbers, [](const auto& accountNumber) {
 			CheckResult result;
 			result.number = accountNumber;
@@ -158,15 +155,13 @@ namespace BankOCR {
 		const std::array<char, 11> accountDigitToChar = meta::str_array("0123456789?");
 	}
 
-	String toString(AccountNumber accountNumber)
-	{
+	String toString(AccountNumber accountNumber) {
 		return meta::transform_to_string(accountNumber, [](const auto& accountDigit) {
 			return accountDigitToChar[static_cast<size_t>(accountDigit)];
 		});
 	}
 
-	String toString(CheckResults checkResults)
-	{
+	String toString(CheckResults checkResults) {
 		auto lines = meta::transform_to_vector(checkResults, [](const auto& checkResult) {
 			auto numberStr = toString(checkResult.number);
 			switch (checkResult.state) {
@@ -196,8 +191,7 @@ namespace BankOCR {
 		});
 	}
 
-	int to_int(AccountNumber accountNumber)
-	{
+	int to_int(AccountNumber accountNumber) {
 		return meta::accumulate(accountNumber, 0, [](auto accu, auto v) {
 			if (accu >= 0 && v != AccountDigit::Invalid)
 				return accu * 10 + static_cast<int>(v);
@@ -205,5 +199,4 @@ namespace BankOCR {
 				return -1;
 		});
 	}
-
 }
